@@ -11,10 +11,12 @@ const cameraRoutes = require('./routes/cameraRoutes');
 const Camera = require('./models/Camera');
 require('dotenv').config();
 
-
-app.use(cors({ origin: '*' }));
+// 🔥 PERBAIKAN 1: Bikin "app" dulu, baru bisa dipakai!
 const app = express();
-const PORT = 3000;
+app.use(cors({ origin: '*' }));
+
+// 🔥 PERBAIKAN 2: Port dinamis biar Azure bisa ngatur otomatis
+const PORT = process.env.PORT || 8080;
 
 // ==========================================
 // STATE GLOBAL UNTUK SAKLAR AI
@@ -53,7 +55,6 @@ const Incident = mongoose.model('Incident', incidentSchema);
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-app.use(cors());
 // LIMIT DITAMBAH JADI 50mb JAGA-JAGA AI NGIRIM GAMBAR MENTAH GEDE
 app.use(express.json({ limit: '50mb' })); 
 app.use('/', cameraRoutes);
@@ -86,13 +87,12 @@ app.post('/api/alerts', async (req, res) => {
 
         // 🥇 1. FILTERING: KIRIM HANYA SAAT PENTING
         if (alertData.detail.includes('Compliant') || alertData.detail === 'Idle') {
-            // Simpan log, TAPI JANGAN SIMPAN GAMBARNYA BIAR HEMAT STORAGE!
             const newIncident = new Incident({
                 type: alertData.type,
                 detail: alertData.detail,
                 worker_status: alertData.worker_status,
                 timestamp: alertData.timestamp * 1000, 
-                image_url: '', // Gambar kosong
+                image_url: '', 
                 zone: namaLokasi
             });
             const savedIncident = await newIncident.save();
@@ -105,12 +105,9 @@ app.post('/api/alerts', async (req, res) => {
         const now = Date.now();
 
         if (lastAlertCache[cacheKey] && (now - lastAlertCache[cacheKey] < COOLDOWN_MS)) {
-            // print log kecil aja biar terminal ga penuh
-            // console.log(`🛡️ [ANTI-SPAM] Mengabaikan ${alertData.detail} (Sedang Cooldown)`);
             return res.status(200).json({ message: 'Spam dicegah oleh sistem.' });
         }
         
-        // Catat waktu pelanggaran ini masuk
         lastAlertCache[cacheKey] = now;
 
         // 🥇 2. COMPRESS IMAGE (WAJIB)
@@ -120,16 +117,15 @@ app.post('/api/alerts', async (req, res) => {
                 const filePath = path.join(uploadDir, fileName);
                 const base64Data = alertData.image_b64.replace(/^data:image\/\w+;base64,/, "");
                 
-                // Ubah base64 jadi Buffer
                 const imgBuffer = Buffer.from(base64Data, 'base64');
                 
-                // 🪄 MAGIC KOMPRESI PAKAI SHARP
                 await sharp(imgBuffer)
-                    .resize({ width: 640 }) // Mentok lebar 640px
-                    .jpeg({ quality: 65 })  // Kualitas 65% (Kecil ukurannya, tapi masih jelas dibaca)
-                    .toFile(filePath);      // Langsung simpan ke folder uploads
+                    .resize({ width: 640 }) 
+                    .jpeg({ quality: 65 })  
+                    .toFile(filePath);      
                 
-                finalImageUrl = `http://localhost:3000/uploads/${fileName}`;
+                // 🔥 PERBAIKAN 3: Jangan pakai localhost, pakai path relative agar aman di Azure!
+                finalImageUrl = `/uploads/${fileName}`;
                 console.log(`🗜️ [COMPRESS] Gambar dikecilkan dan disimpan: ${fileName}`);
             } catch (error) {
                 console.error('❌ [SHARP ERROR] Gagal mengkompres/menyimpan foto:', error);
@@ -149,7 +145,6 @@ app.post('/api/alerts', async (req, res) => {
         const savedIncident = await newIncident.save();
         console.log(`🚨 [DANGER ALERT] ${alertData.detail} | LOKASI: ${namaLokasi}`);
         
-        // Broadcast ke frontend
         io.emit('new_safety_alert', savedIncident);
         res.status(200).json({ message: 'Payload diterima & Insiden dicatat' });
 
