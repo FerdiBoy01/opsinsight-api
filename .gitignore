@@ -1,0 +1,21 @@
+# =========================================
+# FOLDER AI / PYTHON ENGINE (YOLOv8)
+# =========================================
+
+# 1. Virtual Environment (SANGAT WAJIB DIABAIKAN!)
+env/
+venv/
+.env/
+
+# 2. File Video Mentah / Simulasi (Bikin limit GitHub jebol)
+*.mp4
+*.avi
+*.mkv
+
+# 3. Cache & Output Training YOLO
+runs/
+__pycache__/
+*.pyc
+
+# 4. Dataset (Kalau isinya ribuan gambar mentah mending diabaikan)
+dataset/

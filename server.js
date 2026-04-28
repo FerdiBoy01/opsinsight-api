@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const fsPromises = require('fs').promises; 
 const fsSync = require('fs'); 
 const path = require('path'); 
-const sharp = require('sharp'); // 👈 IMPORT SHARP UNTUK KOMPRESI GAMBAR
+const sharp = require('sharp');
 const cameraRoutes = require('./routes/cameraRoutes');
 const Camera = require('./models/Camera');
 require('dotenv').config();
@@ -38,7 +38,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("🔥 MongoDB Cloud Connected!"))
   .catch(err => console.log("Gagal konek:", err));
-  
+
 const incidentSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now, index: true }, 
     type: String,
